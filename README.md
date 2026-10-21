@@ -3,9 +3,9 @@
 Scripts do trabalho de conclusão de curso sobre desastres naturais nos municípios
 da RMVale (Região Metropolitana do Vale do Paraíba e Litoral Norte).
 
-Esta primeira parte monta **uma base única, em shapefile, com todos os municípios
-do Brasil**: polígonos oficiais do IBGE + indicadores da DTB + ICM + S2iD + danos
-do Atlas de Desastres. O filtro da RMVale fica para uma etapa futura.
+O pipeline monta **uma base única, em shapefile, com todos os municípios do
+Brasil** (polígonos oficiais do IBGE + indicadores da DTB + ICM + S2iD + danos do
+Atlas de Desastres) e depois recorta os **39 municípios da RMVale**.
 
 ## Como rodar
 
@@ -38,6 +38,13 @@ dados/
     shapefile/municipios_brasil.shp
     shapefile/dicionario_colunas_shapefile.csv
     municipios_brasil.gpkg
+03_Filtragem_RM_Vale/
+  01_filtrar_rmvale.py            recorte dos 39 municípios da RMVale
+  saida/                          (fora do Git)
+    shapefile/municipios_rmvale.shp
+    shapefile/dicionario_colunas_shapefile.csv
+    municipios_rmvale.gpkg
+    municipios_rmvale.xlsx        mesma tabela, sem polígonos
 ```
 
 ## Fluxo dos dados
@@ -49,6 +56,7 @@ dados/
 | 01.03 | Malha Municipal IBGE 2025 (baixada) · DTB | `03_malha_ibge_dtb.gpkg` |
 | 02.01 | `01_icm_s2id.xlsx` · `02_atlas_sumariza.xlsx` | `01_icm_desastres.xlsx` |
 | 02.02 | `03_malha_ibge_dtb.gpkg` · `01_icm_desastres.xlsx` | **`municipios_brasil.shp`** + `.gpkg` |
+| 03.01 | `municipios_brasil.gpkg` | **`municipios_rmvale.shp`** + `.gpkg` + `.xlsx` |
 
 ## Decisões importantes
 
@@ -66,6 +74,20 @@ dados/
 - **Nomes de coluna no shapefile** têm no máximo 10 caracteres (limite do formato).
   O nome completo de cada coluna está em `dicionario_colunas_shapefile.csv`, e o
   `municipios_brasil.gpkg` tem o mesmo conteúdo com os nomes completos.
+
+## Recorte da RMVale
+
+O filtro usa a coluna `sub_regiao_sp` da DTB: as sub-regiões SR1 a SR5 são
+exatamente os 39 municípios da RMVale (SR5 = Litoral Norte). O script para com
+erro se o recorte não tiver 39 municípios.
+
+| Sub-região | Municípios |
+|---|---|
+| SR1 | Caçapava, Igaratá, Jacareí, Jambeiro, Monteiro Lobato, Paraibuna, Santa Branca, São José dos Campos |
+| SR2 | Campos do Jordão, Lagoinha, Natividade da Serra, Pindamonhangaba, Redenção da Serra, Santo Antônio do Pinhal, São Bento do Sapucaí, São Luiz do Paraitinga, Taubaté, Tremembé |
+| SR3 | Aparecida, Cachoeira Paulista, Canas, Cunha, Guaratinguetá, Lorena, Piquete, Potim, Roseira |
+| SR4 | Arapeí, Areias, Bananal, Cruzeiro, Lavrinhas, Queluz, São José do Barreiro, Silveiras |
+| SR5 | Caraguatatuba, Ilhabela, São Sebastião, Ubatuba |
 
 ## Atlas de Desastres
 
