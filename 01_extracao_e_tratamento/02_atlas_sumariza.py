@@ -1,34 +1,63 @@
+# -*- coding: utf-8 -*-
 """
-Atlas de Desastres - agrupamento Município x Ano
-O ano inicial é perguntado no console.
+ETAPA 02 - Atlas de Desastres: sumarização por município
 
-Regras (coluna "Agregação" do dicionário, linhas 2 a 71 do Excel):
+Agrupa os registros do Atlas Digital de Desastres em UMA linha por município,
+considerando os desastres a partir de ANO_INICIAL.
+
+Regras (coluna "Agregação" do dicionário, linhas 2 a 71 da aba meta_data):
     Drop = a coluna é descartada
     s    = a coluna é mantida (descritiva do município)
-    Sum  = soma dos valores no ano
-    Moda = valor mais frequente no ano
-Resultado: UMA linha por município por ano.
+    Sum  = soma dos valores no período
+    Moda = valor mais frequente no período
+
+Entradas (dados/entrada/):
+- BD_Atlas_1991_2025_v1.1_2026.08.06_Consolidado.xlsx   (Atlas bruto - opcional)
+- dicionario_de_dados.xlsx
+- atlas_sumariza_2013_em_diante.xlsx   (base já sumarizada, usada se o Atlas bruto não estiver na pasta)
+Saída:
+- 01_extracao_e_tratamento/saida/02_atlas_sumariza.xlsx
 """
 
 import re
+import shutil
 import unicodedata
 from pathlib import Path
 
 import pandas as pd
 
 # ----------------------------------------------------------------------------
-# 1) CONFIGURAÇÃO  (ajuste os caminhos para a sua máquina)
+# 1) CONFIGURAÇÃO
 # ----------------------------------------------------------------------------
-PASTA = Path(r"C:\Users\ana\OneDrive\Documentos\Ana Demarqui\Big Data")          # <<< ALTERE AQUI
-ARQ_ATLAS = PASTA / "BD_Atlas_1991_2025_v1.1_2026.08.06_Consolidado.xlsx"
-ARQ_DICT = PASTA / "Data_Dictionary_meta_data.xlsx"
+RAIZ = Path(__file__).resolve().parents[1]
+PASTA_ENTRADA = RAIZ / "dados" / "entrada"
+PASTA_SAIDA = Path(__file__).resolve().parent / "saida"
+PASTA_SAIDA.mkdir(parents=True, exist_ok=True)
+
+ARQ_ATLAS = PASTA_ENTRADA / "BD_Atlas_1991_2025_v1.1_2026.08.06_Consolidado.xlsx"
+ARQ_DICT = PASTA_ENTRADA / "dicionario_de_dados.xlsx"
+ARQ_BASE_PRONTA = PASTA_ENTRADA / "atlas_sumariza_2013_em_diante.xlsx"
+ARQ_SAIDA = PASTA_SAIDA / "02_atlas_sumariza.xlsx"
+
 ABA_ATLAS = "Atlas Valores Originais"
 ABA_DICT = "meta_data"
-ARQ_SAIDA = PASTA / "Atlas_agrupado_municipio_ano.xlsx"
 
-N_LINHAS_DICT = 70          # dicionário até a linha 71 do Excel (cabeçalho + 70)
-COL_DATA_ANO = "Data_Evento"  # data usada para extrair o ANO (pode trocar por "Data_Registro")
+ANO_INICIAL = 2013              # desastres a partir deste ano
+AGRUPAR_POR_ANO = False         # True = uma linha por município POR ANO
+N_LINHAS_DICT = 70              # dicionário até a linha 71 do Excel (cabeçalho + 70)
+COL_DATA_ANO = "Data_Evento"    # data usada para extrair o ANO (pode trocar por "Data_Registro")
 COL_MUNICIPIO = "Cod_IBGE_Mun"  # chave do município (mais confiável que o nome)
+
+
+# ----------------------------------------------------------------------------
+# 2) SEM O ATLAS BRUTO: usa a base já sumarizada
+# ----------------------------------------------------------------------------
+if not ARQ_ATLAS.exists():
+    print(f"Atlas bruto não encontrado em: {ARQ_ATLAS}")
+    print(f"Usando a base já sumarizada: {ARQ_BASE_PRONTA.name}")
+    shutil.copyfile(ARQ_BASE_PRONTA, ARQ_SAIDA)
+    print(f"Arquivo salvo em: {ARQ_SAIDA}")
+    raise SystemExit(0)
 
 
 def normaliza(txt):
@@ -38,7 +67,7 @@ def normaliza(txt):
 
 
 # ----------------------------------------------------------------------------
-# 2) LEITURA
+# 3) LEITURA
 # ----------------------------------------------------------------------------
 print("Lendo arquivos...")
 df = pd.read_excel(ARQ_ATLAS, sheet_name=ABA_ATLAS)
@@ -69,34 +98,19 @@ cols_drop = dic.loc[dic["agregacao"] == "drop", "coluna_atlas"].tolist()
 print(f"Somar: {len(cols_sum)} | Moda: {len(cols_moda)} | Manter: {len(cols_manter)} | Descartar: {len(cols_drop)}")
 
 # ----------------------------------------------------------------------------
-# 3) ANO (criado ANTES do drop, pois a coluna de data é 'Drop' no dicionário)
+# 4) ANO (criado ANTES do drop, pois a coluna de data é 'Drop' no dicionário)
 # ----------------------------------------------------------------------------
-df["Ano"] = pd.to_datetime(df[COL_DATA_ANO], errors="coerce").dt.year
+df["Ano"] = pd.to_datetime(df[COL_DATA_ANO], errors="coerce", dayfirst=True).dt.year
 df = df.dropna(subset=["Ano"]).copy()
 df["Ano"] = df["Ano"].astype(int)
 
-ano_min, ano_max = int(df["Ano"].min()), int(df["Ano"].max())
+df = df[df["Ano"] >= ANO_INICIAL].copy()
+print(f"Filtrando de {ANO_INICIAL} em diante: {len(df):,} registros de desastres.")
 
 # ----------------------------------------------------------------------------
-# 4) INPUT DO ANO INICIAL
+# 5) AGRUPAMENTO  (município [+ ano]  ->  1 linha)
 # ----------------------------------------------------------------------------
-while True:
-    resp = input(f"A partir de qual ano deseja exibir? ({ano_min}-{ano_max}) [Enter = {ano_min}]: ").strip()
-    if resp == "":
-        ano_inicial = ano_min
-        break
-    if resp.isdigit() and ano_min <= int(resp) <= ano_max:
-        ano_inicial = int(resp)
-        break
-    print(f"  Valor inválido. Digite um ano entre {ano_min} e {ano_max}.")
-
-df = df[df["Ano"] >= ano_inicial].copy()
-print(f"Filtrando de {ano_inicial} em diante: {len(df):,} registros de desastres.")
-
-# ----------------------------------------------------------------------------
-# 5) AGRUPAMENTO  (município + ano  ->  1 linha)
-# ----------------------------------------------------------------------------
-chaves = [COL_MUNICIPIO, "Ano"]
+chaves = [COL_MUNICIPIO, "Ano"] if AGRUPAR_POR_ANO else [COL_MUNICIPIO]
 
 # 5.1 colunas mantidas ('s'): pega o primeiro valor do grupo
 manter = [c for c in cols_manter if c != COL_MUNICIPIO]
@@ -107,7 +121,7 @@ agg.update({c: "sum" for c in cols_sum})
 res = df.groupby(chaves, as_index=False).agg(agg)
 
 
-# 5.3 colunas de moda: valor mais frequente no município/ano (ignora vazios;
+# 5.3 colunas de moda: valor mais frequente no grupo (ignora vazios;
 #     em caso de empate fica o menor valor / primeiro em ordem alfabética)
 def moda_por_grupo(dados, coluna):
     cont = (
@@ -115,7 +129,7 @@ def moda_por_grupo(dados, coluna):
         .groupby(chaves + [coluna])
         .size()
         .reset_index(name="_n")
-        .sort_values(chaves + ["_n", coluna], ascending=[True, True, False, True])
+        .sort_values(chaves + ["_n", coluna], ascending=[True] * len(chaves) + [False, True])
         .drop_duplicates(chaves)
     )
     return cont[chaves + [coluna]]
@@ -131,8 +145,8 @@ res = res.merge(qtd, on=chaves, how="left")
 # ----------------------------------------------------------------------------
 # 6) ORGANIZA E SALVA
 # ----------------------------------------------------------------------------
-ordem = [COL_MUNICIPIO, "Ano"] + manter + ["Qtd_Desastres"] + cols_moda + cols_sum
-res = res[ordem].sort_values(["Ano", COL_MUNICIPIO]).reset_index(drop=True)
+ordem = chaves + manter + ["Qtd_Desastres"] + cols_moda + cols_sum
+res = res[ordem].sort_values(chaves[::-1]).reset_index(drop=True)
 
 print(f"Resultado: {res.shape[0]:,} linhas x {res.shape[1]} colunas")
 res.to_excel(ARQ_SAIDA, index=False)

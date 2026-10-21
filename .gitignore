@@ -1,0 +1,14 @@
+# Arquivos baixados pelos scripts (regenerados ao rodar o pipeline)
+dados/downloads/
+
+# Saídas geradas pelos scripts (o shapefile final passa de 300 MB, acima do limite do GitHub)
+01_extracao_e_tratamento/saida/
+02_consolidacao_e_merge/saida/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Arquivos temporários do Excel
+~$*

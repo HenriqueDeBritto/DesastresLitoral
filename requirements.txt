@@ -1,0 +1,8 @@
+pandas==3.0.6
+openpyxl==3.1.5
+requests==2.34.2
+pdfplumber==0.11.10
+geopandas==1.1.0
+pyogrio==0.13.0
+shapely==2.1.0
+pyproj==3.8.0
