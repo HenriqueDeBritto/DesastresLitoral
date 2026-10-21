@@ -4,6 +4,7 @@ dados/downloads/
 # Saídas geradas pelos scripts (o shapefile final passa de 300 MB, acima do limite do GitHub)
 01_extracao_e_tratamento/saida/
 02_consolidacao_e_merge/saida/
+03_Filtragem_RM_Vale/saida/
 
 # Python
 __pycache__/

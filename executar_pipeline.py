@@ -17,6 +17,7 @@ ETAPAS = [
     "01_extracao_e_tratamento/03_ibge_malha_dtb.py",
     "02_consolidacao_e_merge/01_merge_icm_desastres.py",
     "02_consolidacao_e_merge/02_merge_shapefile_final.py",
+    "03_Filtragem_RM_Vale/01_filtrar_rmvale.py",
 ]
 
 for etapa in ETAPAS:
